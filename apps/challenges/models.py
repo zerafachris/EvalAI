@@ -251,3 +251,17 @@ class StarChallenge(TimeStampedModel):
     class Meta:
         app_label = 'challenges'
         db_table = 'starred_challenge'
+
+
+class HumanEvaluation(TimeStampedModel):
+    """
+    Model to store the data related to human in the loop evaluation
+    """
+    challenge = models.ForeignKey('Challenge')
+    model = models.CharField(max_length=100, default="Test Model")
+    predictions = JSONField(default={"foo": "bar"})
+    leaderboard = models.ForeignKey('Leaderboard')
+
+    class Meta:
+        app_label = 'challenges'
+        db_table = 'human_evaluation'

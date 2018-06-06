@@ -151,7 +151,7 @@ REST_FRAMEWORK = {
         'rest_framework.pagination.LimitOffsetPagination'),
     'PAGE_SIZE': 10,
     'DEFAULT_PERMISSION_CLASSES': [
-        'rest_framework.permissions.IsAuthenticatedOrReadOnly'
+        'rest_framework.permissions.AllowAny'
     ],
     'DEFAULT_AUTHENTICATION_CLASSES': [
         'rest_framework_expiring_authtoken.authentication.ExpiringTokenAuthentication',

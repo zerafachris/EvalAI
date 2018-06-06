@@ -9,7 +9,8 @@ from .models import (Challenge,
                      DatasetSplit,
                      Leaderboard,
                      LeaderboardData,
-                     StarChallenge,)
+                     StarChallenge,
+                     HumanEvaluation,)
 
 
 @admin.register(Challenge)
@@ -67,3 +68,7 @@ class ChallengeConfigurationAdmin(ImportExportTimeStampedAdmin):
 class StarChallengeAdmin(ImportExportTimeStampedAdmin):
     list_display = ('user', 'challenge', 'is_starred')
     search_fields = ('user__username', 'challenge__title',)
+
+@admin.register(HumanEvaluation)
+class HumanEvaluationAdmin(ImportExportTimeStampedAdmin):
+    list_display = ("model", "predictions",)

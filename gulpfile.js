@@ -420,5 +420,5 @@ gulp.task('prod', function(callback) {
 
 // Runserver for development
 gulp.task('dev:runserver', function(callback) {
-    runSequence('dev', 'connect', 'watch', 'test:watch', callback);
+    runSequence('dev', 'connect', 'watch', callback);
 });

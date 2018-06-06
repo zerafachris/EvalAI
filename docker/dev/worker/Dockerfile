@@ -10,4 +10,4 @@ ADD requirements/* /code/
 RUN pip install -U cffi service_identity
 RUN pip install -r dev.txt
 
-CMD ["./docker/wait-for-it.sh", "django:8000", "--", "python", "scripts/workers/submission_worker.py" ]
+CMD ["./docker/wait-for-it.sh", "django:8000", "db:5432", "--", "python", "scripts/workers/submission_worker.py" ]

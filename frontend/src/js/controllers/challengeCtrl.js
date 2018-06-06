@@ -28,6 +28,7 @@
         vm.submissionVisibility = {};
         vm.showUpdate = false;
         vm.showLeaderboardUpdate = false;
+        vm.showHumanEvalUpdate = false;
         vm.poller = null;
         vm.isChallengeHost = false;
         vm.stopLeaderboard = function() {};
@@ -529,6 +530,106 @@
         if (vm.phaseSplitId) {
             vm.getLeaderboard(vm.phaseSplitId);
         }
+
+        // ######## HUMAN IN THE LOOP EVALUATION CODE STARTS ###########
+
+
+        // my submissions
+        vm.isHumanResult = false;
+
+        vm.getHumanEval = function(humanChallengeId) {
+            vm.stopHumanEval = function() {
+                $interval.cancel(vm.poller);
+            };
+            vm.stopHumanEval();
+
+            vm.isHumanResult = true;
+            vm.humanChallengeId = humanChallengeId;
+            // loader for exisiting teams
+            vm.isExistLoader = true;
+            vm.loaderTitle = '';
+            vm.loaderContainer = angular.element('.exist-team-card');
+
+            vm.startLoader("Loading Human in the loop evaluation results...");
+
+
+            // Show human evaluation result
+            vm.humanEvalResult = {};
+            parameters.url = "challenges/1/human/evaluation/";
+            parameters.method = 'GET';
+            parameters.data = {};
+            parameters.callback = {
+                onSuccess: function(response) {
+                    console.log(response.data);
+                    vm.humanEvalResult = response.data;
+                    console.log("Working ..... ", vm.humanEvalResult);
+                    vm.startHumanEval();
+                    vm.stopLoader();
+                },
+                onError: function(response) {
+                    var error = response.data;
+                    vm.humanEvalResult.error = error;
+                    vm.stopLoader();
+                }
+            };
+
+
+            utilities.sendRequest(parameters);
+            vm.startHumanEval = function() {
+                vm.stopHumanEval();
+                vm.poller = $interval(function() {
+                    parameters.url = "challenges/1/human/evaluation/";
+                    parameters.method = 'GET';
+                    parameters.data = {};
+                    parameters.callback = {
+                        onSuccess: function(response) {
+                            var details = response.data;
+                            if (vm.humanEvalResult !== details) {
+                                // vm.showHumanEvalUpdate = true;
+                                vm.getHumanEval(1);
+                            }
+                        },
+                        onError: function(response) {
+                            var error = response.data;
+                            utilities.storeData('emailError', error.detail);
+                            $state.go('web.permission-denied');
+                            vm.stopLoader();
+                        }
+                    };
+
+                    utilities.sendRequest(parameters);
+                }, 10000);
+            };
+
+        };
+
+        vm.getHumanEval(1);
+
+
+        // vm.refreshHumanEvalResult = function() {
+
+        //     vm.startLoader("Loading Submissions");
+        //     vm.submissionResult = {};
+
+        //     parameters.url = "challenges/1/human/evaluation/";
+        //     parameters.method = 'GET';
+        //     parameters.data = {};
+        //     parameters.callback = {
+        //         onSuccess: function(response) {
+        //             var details = response.data;
+        //             vm.showUpdate = false;
+        //             vm.stopLoader();
+        //         },
+        //         onError: function() {
+        //             vm.stopLoader();
+        //         }
+        //     };
+
+        //     utilities.sendRequest(parameters);
+        // };
+
+        // ######## HUMAN IN THE LOOP EVALUATION CODE ENDS ###########
+
 
         vm.getResults = function(phaseId) {
 

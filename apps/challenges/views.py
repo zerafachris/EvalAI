@@ -1,4 +1,5 @@
 import csv
+import json
 import logging
 import random
 import requests
@@ -46,7 +47,9 @@ from .models import (Challenge,
                      ChallengePhase,
                      ChallengePhaseSplit,
                      ChallengeConfiguration,
-                     StarChallenge)
+                     StarChallenge,
+                     HumanEvaluation,
+                     Leaderboard,)
 from .permissions import IsChallengeCreator
 from .serializers import (ChallengeConfigSerializer,
                           ChallengePhaseSerializer,
@@ -1293,3 +1296,69 @@ def star_challenge(request, challenge_pk):
             response_data = {'is_starred': False,
                              'count': serializer.data[0]['count']}
             return Response(response_data, status=status.HTTP_200_OK)
+
+
+@throttle_classes([UserRateThrottle])
+@api_view(['GET', 'POST'])
+# @permission_classes((permissions.IsAuthenticated, HasVerifiedEmail))
+# @permission_classes((permissions.AllowAny))
+# @authentication_classes((ExpiringTokenAuthentication,))
+def submit_human_evaluation(request, challenge_pk):
+    """
+    API endpoint for storing the human in the loop evaluation
+    in a particular challenge
+    """
+    challenge = get_challenge_model(challenge_pk)
+    if request.method == 'POST':
+        try:
+            predictions = request.POST.get('predictions')
+            predictions = json.loads(predictions)
+            model = request.POST.get('model')
+            print(model, predictions)
+            print(challenge)
+            schema = {'default_order_by': 'Overall', 'labels': ['Correctness', 'Coherence', 'Length', 'Overall']}
+            leaderboard, created = Leaderboard.objects.get_or_create(schema=schema)
+            human_eval_obj, created = HumanEvaluation.objects.get_or_create(
+                challenge=challenge,
+                model=model,
+                leaderboard=leaderboard)
+
+            overall_human_eval_predictions = {}
+
+            if created:
+                print("Creating evaluation object for the new model")
+                human_eval_obj.predictions = predictions
+                human_eval_obj.save()
+                overall_human_eval_predictions = human_eval_obj.predictions
+            else:
+                print("evaluation for this object already exists")
+                overall_human_eval_predictions = human_eval_obj.predictions
+
+                for k, v in predictions.iteritems():
+                    overall_human_eval_predictions[k].extend(v)
+
+                print("Predictions: ", predictions)
+                print("Overall Predictions", overall_human_eval_predictions)
+                human_eval_obj.predictions = overall_human_eval_predictions
+                human_eval_obj.save()
+
+            return Response(overall_human_eval_predictions, status=status.HTTP_201_CREATED)
+        except Exception:
+            print("#### Exception")
+            import traceback
+            print(traceback.format_exc())
+
+    if request.method == 'GET':
+        response_data = []
+        human_evals = HumanEvaluation.objects.filter(challenge=challenge)
+        for human_eval in human_evals:
+            temp_result = {}
+            for k, v in human_eval.predictions.iteritems():
+                temp_result[k] = round(sum(v), 2)
+                num_workers = len(v)
+            temp_result['num_workers'] = num_workers
+            temp_result['model'] = human_eval.model
+            temp_result['schema'] = human_eval.leaderboard.schema['labels']
+            response_data.append(temp_result)
+        result = sorted(response_data, key=lambda k: float(k['Overall']), reverse=True)
+        return Response(result, status=status.HTTP_200_OK)

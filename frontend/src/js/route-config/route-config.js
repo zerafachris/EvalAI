@@ -265,6 +265,14 @@
             title: 'Leaderboard',
         };
 
+        var human_evaluation = {
+            name: "web.challenge-main.challenge-page.human_evaluation",
+            parent: "web.challenge-main.challenge-page",
+            url: "/human-evaluation",
+            templateUrl: baseUrl + "/web/challenge/human_evaluation.html",
+            title: 'Human Evaluation',
+        };
+
         var challenge_phase_leaderboard = {
             name: "web.challenge-main.challenge-page.phase-leaderboard",
             url: "/leaderboard/:phaseSplitId",
@@ -434,6 +442,7 @@
             title: 'Leaderboard'
         };
 
+
         // call all states here
         $stateProvider.state(home);
         $stateProvider.state(privacy_policy);
@@ -474,6 +483,7 @@
         $stateProvider.state(my_submission);
         $stateProvider.state(my_challenge_all_submission);
         $stateProvider.state(leaderboard);
+        $stateProvider.state(human_evaluation);
         $stateProvider.state(challenge_phase_leaderboard);
 
         // featured challenge details

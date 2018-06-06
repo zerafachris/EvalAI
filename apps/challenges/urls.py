@@ -52,4 +52,7 @@ urlpatterns = [
     url(r'^(?P<challenge_pk>[0-9]+)/$',
         views.star_challenge,
         name='star_challenge'),
+    url(r'^(?P<challenge_pk>[0-9]+)/human/evaluation/$',
+        views.submit_human_evaluation,
+        name='submit_human_evaluation'),
 ]
