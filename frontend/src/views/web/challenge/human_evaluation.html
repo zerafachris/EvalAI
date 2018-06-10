@@ -38,13 +38,7 @@
                                         </a>
                                     </td>
                                     <td class="align-left" data-field="team">
-                                        <a href="#">
-                                            Participant Team
-                                        </a>
-                                    </td>
-                                    <td class="align-left" data-field="model">
-                                        <a href="#">
-                                            Model
+                                        <a href="#">Model Name
                                         </a>
                                     </td>
                                     <td class="align-left" ng-repeat="key in challenge.humanEvalResult[0].schema">
@@ -54,7 +48,7 @@
                                     </td>
                                     <td class="align-left" data-field="workers">
                                         <a href="#">
-                                            Number of workers            
+                                            #Workers            
                                         </a>
                                     </td>
                                 </tr>
@@ -63,12 +57,11 @@
                                 <tr ng-repeat="key in challenge.humanEvalResult track by $index">
                                     <td class="align-left">{{$index + 1}}</td>
                                     <td class="align-left"><strong>{{key.model}}</strong></td>
-                                    <td class="align-left">{{key.model}}</td>
                                     <td class="align-left">{{key.Correctness}}</td>
                                     <td class="align-left">{{key.Coherence}}</td>
                                     <td class="align-left">{{key.Length}}</td>
                                     <td class="align-left">{{key.Overall}}</td>
-                                    <td class="align-center">{{key.num_workers}}</td>
+                                    <td class="align-left">{{key.num_workers}}</td>
                                 </tr>
                                 </tbody>
                             </table>

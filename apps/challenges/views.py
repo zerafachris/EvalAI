@@ -1354,8 +1354,8 @@ def submit_human_evaluation(request, challenge_pk):
         for human_eval in human_evals:
             temp_result = {}
             for k, v in human_eval.predictions.iteritems():
-                temp_result[k] = round(sum(v), 2)
                 num_workers = len(v)
+                temp_result[k] = round((sum(v)/num_workers), 2)
             temp_result['num_workers'] = num_workers
             temp_result['model'] = human_eval.model
             temp_result['schema'] = human_eval.leaderboard.schema['labels']
