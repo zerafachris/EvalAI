@@ -555,7 +555,7 @@
 
             // Show human evaluation result
             vm.humanEvalResult = {};
-            parameters.url = "challenges/1/human/evaluation/";
+            parameters.url = "challenges/3/human/evaluation/";
             parameters.method = 'GET';
             parameters.data = {};
             parameters.callback = {
@@ -578,7 +578,7 @@
             vm.startHumanEval = function() {
                 vm.stopHumanEval();
                 vm.poller = $interval(function() {
-                    parameters.url = "challenges/1/human/evaluation/";
+                    parameters.url = "challenges/3/human/evaluation/";
                     parameters.method = 'GET';
                     parameters.data = {};
                     parameters.callback = {
@@ -611,7 +611,7 @@
         //     vm.startLoader("Loading Submissions");
         //     vm.submissionResult = {};
 
-        //     parameters.url = "challenges/1/human/evaluation/";
+        //     parameters.url = "challenges/3/human/evaluation/";
         //     parameters.method = 'GET';
         //     parameters.data = {};
         //     parameters.callback = {

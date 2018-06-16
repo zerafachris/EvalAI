@@ -48,7 +48,7 @@
                                     </td>
                                     <td class="align-left" data-field="workers">
                                         <a href="#">
-                                            #Workers            
+                                            #Workers
                                         </a>
                                     </td>
                                 </tr>
@@ -57,9 +57,11 @@
                                 <tr ng-repeat="key in challenge.humanEvalResult track by $index">
                                     <td class="align-left">{{$index + 1}}</td>
                                     <td class="align-left"><strong>{{key.model}}</strong></td>
-                                    <td class="align-left">{{key.Correctness}}</td>
-                                    <td class="align-left">{{key.Coherence}}</td>
-                                    <td class="align-left">{{key.Length}}</td>
+                                    <td class="align-left">{{key.Correct}}</td>
+                                    <td class="align-left">{{key.Detailed}}</td>
+                                    <td class="align-left">{{key.Fluent}}</td>
+                                    <td class="align-left">{{key['Self-consistent']}}</td>
+                                    <td class="align-left">{{key['Human-like']}}</td>
                                     <td class="align-left">{{key.Overall}}</td>
                                     <td class="align-left">{{key.num_workers}}</td>
                                 </tr>

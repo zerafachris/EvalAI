@@ -1316,7 +1316,7 @@ def submit_human_evaluation(request, challenge_pk):
             model = request.POST.get('model')
             print(model, predictions)
             print(challenge)
-            schema = {'default_order_by': 'Overall', 'labels': ['Correctness', 'Coherence', 'Length', 'Overall']}
+            schema = {'default_order_by': 'Overall', 'labels': ['Correct', 'Detailed', 'Fluent', 'Self-consistent', 'Human-like', 'Overall']}
             leaderboard, created = Leaderboard.objects.get_or_create(schema=schema)
             human_eval_obj, created = HumanEvaluation.objects.get_or_create(
                 challenge=challenge,
