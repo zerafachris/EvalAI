@@ -1,4 +1,5 @@
 from allauth.account.models import EmailAddress
+from django.conf import settings
 from rest_framework import permissions
 
 
@@ -14,9 +15,11 @@ class HasVerifiedEmail(permissions.BasePermission):
         if request.user.is_anonymous:
             return True
         else:
-            if EmailAddress.objects.filter(
-                user=request.user, verified=True
-            ).exists():
+            email_query = EmailAddress.objects.filter(user=request.user)
+            require_verified = settings.ACCOUNT_EMAIL_REQUIRED
+            if require_verified:
+                email_query = email_query.filter(verified=True)
+            if email_query.exists():
                 return True
             else:
                 return False
