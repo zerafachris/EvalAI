@@ -1,1 +1,0 @@
-evalai_forest_classification_challenge

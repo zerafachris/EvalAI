@@ -1,23 +1,33 @@
 from __future__ import unicode_literals
 
+import random
+import tempfile
+import zipfile
+from collections import namedtuple
+from os.path import basename, isfile, join
+
+import yaml
+
+from django.conf import settings
 from django.contrib.auth.models import User
+from django.contrib.postgres.fields import ArrayField, JSONField
+from django.core.files.base import ContentFile
+from django.db import models
+from django.db.models import signals
 from django.db.models.signals import pre_save
 from django.dispatch import receiver
 from django.utils import timezone
-from django.contrib.postgres.fields import ArrayField, JSONField
-from django.db import models
-from django.db.models import signals
-
-from .aws_utils import restart_workers_signal_callback
 
 from base.models import (
     TimeStampedModel,
-    model_field_name,
     create_post_model_field,
+    model_field_name,
 )
-from base.utils import RandomFileName, get_slug
-from participants.models import ParticipantTeam
+
+from base.utils import RandomFileName, get_slug, get_queue_name
 from hosts.models import ChallengeHost
+from participants.models import ParticipantTeam, Participant
+from .aws_utils import restart_workers_signal_callback
 
 
 @receiver(pre_save, sender="challenges.Challenge")
@@ -162,6 +172,277 @@ class Challenge(TimeStampedModel):
         if self.start_date < timezone.now() and self.end_date > timezone.now():
             return True
         return False
+
+    @classmethod
+    def load_from_zip(cls, zip_file_path, challenge_host_team):
+        from .utils import get_file_content
+        from .serializers import (
+            ChallengePhaseCreateSerializer,
+            DatasetSplitSerializer,
+            LeaderboardSerializer,
+            ZipChallengePhaseSplitSerializer,
+            ZipChallengeSerializer,
+        )
+
+        zip_ref = zipfile.ZipFile(zip_file_path, "r")
+        BASE_LOCATION = tempfile.mkdtemp()
+        zip_ref.extractall(BASE_LOCATION)
+        zip_ref.close()
+
+        for name in zip_ref.namelist():
+            if (name.endswith(".yaml") or name.endswith(".yml")) and (
+                not name.startswith("__MACOSX")
+            ):  # Ignore YAML File in __MACOSX Directory
+                yaml_file = name
+                extracted_folder_name = yaml_file.split(basename(yaml_file))[0]
+                break
+        else:
+            raise Exception('No yaml file found in zip root!')
+
+        with open(
+            join(BASE_LOCATION, yaml_file), "r"
+        ) as stream:
+            yaml_file_data = yaml.safe_load(stream)
+
+        evaluation_script = yaml_file_data["evaluation_script"]
+        evaluation_script_path = join(
+            BASE_LOCATION,
+            extracted_folder_name,
+            evaluation_script,
+        )
+
+        # Check for evaluation script file in extracted zip folder.
+        with open(evaluation_script_path, "rb") as challenge_evaluation_script:
+            challenge_evaluation_script_file = ContentFile(
+                challenge_evaluation_script.read(), evaluation_script_path
+            )
+        challenge_phases_data = yaml_file_data["challenge_phases"]
+
+        for data in challenge_phases_data:
+            test_annotation_file = data["test_annotation_file"]
+            test_annotation_file_path = join(
+                BASE_LOCATION,
+                extracted_folder_name,
+                test_annotation_file,
+            )
+
+        image = yaml_file_data.get("image")
+        if image and (
+            image.endswith(".jpg")
+            or image.endswith(".jpeg")
+            or image.endswith(".png")
+        ):
+            challenge_image_path = join(
+                BASE_LOCATION, extracted_folder_name, image
+            )
+            if isfile(challenge_image_path):
+                challenge_image_file = ContentFile(
+                    get_file_content(challenge_image_path, "rb"), image
+                )
+            else:
+                challenge_image_file = None
+        else:
+            challenge_image_file = None
+
+        challenge_description_file_path = join(
+            BASE_LOCATION,
+            extracted_folder_name,
+            yaml_file_data["description"],
+        )
+        if challenge_description_file_path.endswith(".html") and isfile(
+            challenge_description_file_path
+        ):
+            yaml_file_data["description"] = get_file_content(
+                challenge_description_file_path, "rb"
+            ).decode("utf-8")
+
+        challenge_evaluation_details_file_path = join(
+            BASE_LOCATION,
+            extracted_folder_name,
+            yaml_file_data["evaluation_details"],
+        )
+
+        if challenge_evaluation_details_file_path.endswith(".html") and isfile(
+            challenge_evaluation_details_file_path
+        ):
+            yaml_file_data["evaluation_details"] = get_file_content(
+                challenge_evaluation_details_file_path, "rb"
+            ).decode("utf-8")
+        else:
+            yaml_file_data["evaluation_details"] = None
+
+        challenge_terms_and_cond_file_path = join(
+            BASE_LOCATION,
+            extracted_folder_name,
+            yaml_file_data["terms_and_conditions"],
+        )
+        if challenge_terms_and_cond_file_path.endswith(".html") and isfile(
+            challenge_terms_and_cond_file_path
+        ):
+            yaml_file_data["terms_and_conditions"] = get_file_content(
+                challenge_terms_and_cond_file_path, "rb"
+            ).decode("utf-8")
+        else:
+            yaml_file_data["terms_and_conditions"] = None
+
+        submission_guidelines_file_path = join(
+            BASE_LOCATION,
+            extracted_folder_name,
+            yaml_file_data["submission_guidelines"],
+        )
+        if submission_guidelines_file_path.endswith(".html") and isfile(
+            submission_guidelines_file_path
+        ):
+            yaml_file_data["submission_guidelines"] = get_file_content(
+                submission_guidelines_file_path, "rb"
+            ).decode("utf-8")
+        else:
+            yaml_file_data["submission_guidelines"] = None
+
+        serializer = ZipChallengeSerializer(
+            data=yaml_file_data,
+            context={
+                "request": namedtuple('Request', 'method')(method='NOTGET'),
+                "challenge_host_team": challenge_host_team,
+                "image": challenge_image_file,
+                "evaluation_script": challenge_evaluation_script_file,
+            },
+        )
+        if serializer.is_valid():
+            serializer.save()
+            challenge = serializer.instance
+            queue_name = get_queue_name(challenge.title)
+            challenge.queue = queue_name
+            challenge.save()
+        else:
+            raise Exception(serializer.errors)
+
+        # Create Leaderboard
+        yaml_file_data_of_leaderboard = yaml_file_data["leaderboard"]
+        leaderboard_ids = {}
+        for data in yaml_file_data_of_leaderboard:
+            serializer = LeaderboardSerializer(data=data)
+            if serializer.is_valid():
+                serializer.save()
+                leaderboard_ids[str(data["id"])] = serializer.instance.pk
+            else:
+                raise Exception(serializer.errors)
+
+        # Create Challenge Phase
+        challenge_phase_ids = {}
+        for data in challenge_phases_data:
+            # Check for challenge phase description file
+            phase_description_file_path = join(
+                BASE_LOCATION,
+                extracted_folder_name,
+                data["description"],
+            )
+            if phase_description_file_path.endswith(".html") and isfile(
+                phase_description_file_path
+            ):
+                data["description"] = get_file_content(
+                    phase_description_file_path, "rb"
+                ).decode("utf-8")
+            else:
+                data["description"] = None
+
+            test_annotation_file = data["test_annotation_file"]
+            data["slug"] = "{}-{}-{}".format(
+                challenge.title.split(" ")[0].lower(),
+                data["codename"].replace(" ", "-").lower(),
+                challenge.pk,
+            )[:198]
+            if test_annotation_file:
+                test_annotation_file_path = join(
+                    BASE_LOCATION,
+                    extracted_folder_name,
+                    test_annotation_file,
+                )
+            if isfile(test_annotation_file_path):
+                with open(
+                    test_annotation_file_path, "rb"
+                ) as test_annotation_file:
+                    challenge_test_annotation_file = ContentFile(
+                        test_annotation_file.read(),
+                        test_annotation_file_path,
+                    )
+
+            serializer = ChallengePhaseCreateSerializer(
+                data=data,
+                context={
+                    "challenge": challenge,
+                    "test_annotation": challenge_test_annotation_file,
+                },
+            )
+            if serializer.is_valid():
+                serializer.save()
+                challenge_phase_ids[
+                    str(data["id"])
+                ] = serializer.instance.pk
+            else:
+                raise Exception(serializer.errors)
+
+        # Create Dataset Splits
+        yaml_file_data_of_dataset_split = yaml_file_data["dataset_splits"]
+        dataset_split_ids = {}
+        for data in yaml_file_data_of_dataset_split:
+            serializer = DatasetSplitSerializer(data=data)
+            if serializer.is_valid():
+                serializer.save()
+                dataset_split_ids[str(data["id"])] = serializer.instance.pk
+            else:
+                # Return error when dataset split name is not unique.
+                raise Exception(serializer.errors)
+
+        # Create Challenge Phase Splits
+        challenge_phase_splits_data = yaml_file_data[
+            "challenge_phase_splits"
+        ]
+
+        for data in challenge_phase_splits_data:
+            challenge_phase = challenge_phase_ids[
+                str(data["challenge_phase_id"])
+            ]
+            leaderboard = leaderboard_ids[str(data["leaderboard_id"])]
+            dataset_split = dataset_split_ids[
+                str(data["dataset_split_id"])
+            ]
+            visibility = data["visibility"]
+
+            data = {
+                "challenge_phase": challenge_phase,
+                "leaderboard": leaderboard,
+                "dataset_split": dataset_split,
+                "visibility": visibility,
+            }
+
+            serializer = ZipChallengePhaseSplitSerializer(data=data)
+            if serializer.is_valid():
+                serializer.save()
+            else:
+                raise Exception(serializer.errors)
+
+        if not challenge.is_docker_based:
+            # Add the Challenge Host as a test participant.
+            emails = challenge_host_team.get_all_challenge_host_email()
+            team_name = "Host_{}_Team".format(random.randint(1, 100000))
+            participant_host_team = ParticipantTeam(
+                team_name=team_name,
+                created_by=challenge_host_team.created_by,
+            )
+            participant_host_team.save()
+            for email in emails:
+                user = User.objects.get(email=email)
+                host = Participant(
+                    user=user,
+                    status=Participant.ACCEPTED,
+                    team=participant_host_team,
+                )
+                host.save()
+            challenge.participant_teams.add(participant_host_team)
+
+        print("Success creating challenge")
+        return challenge
 
 
 signals.post_save.connect(

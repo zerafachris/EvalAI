@@ -184,7 +184,7 @@ def create_dir_as_python_package(directory):
 
 def return_file_url_per_environment(url):
 
-    if DJANGO_SETTINGS_MODULE == "settings.dev":
+    if DJANGO_SETTINGS_MODULE in ["settings.dev", "settings.pymalta"]:
         base_url = "http://{0}:8000".format(DJANGO_SERVER)
         url = "{0}{1}".format(base_url, url)
 
