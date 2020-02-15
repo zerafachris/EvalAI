@@ -24,7 +24,7 @@
         utilities.hideLoader();
 
         vm.imgUrlObj = {
-            profilePic: "dist/images/spaceman.png"
+            profilePic: "dist/images/g2net_logo_white.png"
         };
 
         var hasImage = utilities.getData('avatar');

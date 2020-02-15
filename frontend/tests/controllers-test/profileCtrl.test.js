@@ -35,7 +35,7 @@ describe('Unit tests for profile controller', function () {
             expect(vm.token).toEqual('');
 
             expect(utilities.hideLoader).toHaveBeenCalled()
-            expect(vm.imgUrlObj).toEqual({profilePic: "dist/images/spaceman.png"});
+            expect(vm.imgUrlObj).toEqual({profilePic: "dist/images/g2net_logo_white.png"});
             expect(utilities.getData).toHaveBeenCalledWith('userKey');
         });
     });

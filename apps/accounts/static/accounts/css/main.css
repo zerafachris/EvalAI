@@ -1254,7 +1254,7 @@ a.active-auth {
 }
 
 img.auth-logo {
-  width: 90px;
+  width: 200px;
 }
 
 .graphic-cont,
@@ -1689,7 +1689,7 @@ img.auth-logo {
 
 /*landing page logo*/
 a.evalai-logo {
-  width: 60px;
+  width: 200px;
 }
 a.evalai-logo img {
   width: 100%;

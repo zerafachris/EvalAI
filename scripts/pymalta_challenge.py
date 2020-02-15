@@ -11,7 +11,7 @@ from hosts.models import ChallengeHost, ChallengeHostTeam
 
 
 def get_team_and_host():
-    email = "contact@pymalta.org"
+    email = "hack@g2net.eu"
     users = User.objects.filter(email=email)
     if users.exists():
         host_user = users.get()
@@ -19,8 +19,8 @@ def get_team_and_host():
     else:
         host_user = User.objects.create_user(
             email=email,
-            username="contact@pymalta.org",
-            password="qwer1234!",
+            username="g2net_hack",
+            password="qwerty12345",
             is_staff=True,
             is_superuser=True,
         )
@@ -28,7 +28,7 @@ def get_team_and_host():
 
         # Create challenge host team with challenge host
         host_team = ChallengeHostTeam.objects.create(
-            team_name="PyMalta Team",
+            team_name="g2net_hack",
             created_by=host_user,
         )
     return host_user, host_team
@@ -38,7 +38,7 @@ def add_challenge():
     host_user, host_team = get_team_and_host()
     ChallengeHost.objects.create(user=host_user, team_name=host_team, status=ChallengeHost.SELF, permissions=ChallengeHost.ADMIN)
     challenge_zip = open(
-        os.path.join(settings.BASE_DIR, 'forest_clfy_challenge/challenge_config.zip'), 'rb'
+        os.path.join(settings.BASE_DIR, 'g2net_challenge/challenge_config.zip'), 'rb'
     )
     challenge = Challenge.load_from_zip(challenge_zip, host_team)
     challenge.approved_by_admin = True
